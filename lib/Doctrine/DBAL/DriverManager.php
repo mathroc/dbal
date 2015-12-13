@@ -142,7 +142,75 @@ final class DriverManager
         }
 
         $params = self::parseDatabaseUrl($params);
-        
+
+        $wrapperClass = 'Doctrine\DBAL\Connection';
+        if (isset($params['wrapperClass'])) {
+            if (is_subclass_of($params['wrapperClass'], $wrapperClass)) {
+               $wrapperClass = $params['wrapperClass'];
+            } else {
+                throw DBALException::invalidWrapperClass($params['wrapperClass']);
+            }
+        }
+
+        $driver = static::buildDriverConnection($params)
+
+        return new $wrapperClass($params, $driver, $config, $eventManager);
+    }
+
+    /**
+     * Creates a driver connection object based on the specified parameters.
+     *
+     * $params must contain at least one of the following.
+     *
+     * Either 'driver' with one of the following values:
+     *
+     *     pdo_mysql
+     *     pdo_sqlite
+     *     pdo_pgsql
+     *     pdo_oci (unstable)
+     *     pdo_sqlsrv
+     *     pdo_sqlsrv
+     *     mysqli
+     *     sqlanywhere
+     *     sqlsrv
+     *     ibm_db2 (unstable)
+     *     drizzle_pdo_mysql
+     *
+     * OR 'driverClass' that contains the full class name (with namespace) of the
+     * driver class to instantiate.
+     *
+     * Other (optional) parameters:
+     *
+     * <b>user (string)</b>:
+     * The username to use when connecting.
+     *
+     * <b>password (string)</b>:
+     * The password to use when connecting.
+     *
+     * <b>driverOptions (array)</b>:
+     * Any additional driver-specific options for the driver. These are just passed
+     * through to the driver.
+     *
+     * <b>pdo</b>:
+     * You can pass an existing PDO instance through this parameter. The PDO
+     * instance will be wrapped in a Doctrine\DBAL\Connection.
+     *
+     * <b>driverClass</b>:
+     * The driver class to use.
+     *
+     * @param array                              $params       The parameters.
+     *
+     * @return \Doctrine\DBAL\Connection
+     *
+     * @throws \Doctrine\DBAL\DBALException
+     */
+    public static function getDriverConnection(array $params)
+    {
+        return static::buildDriverConnection(self::parseDatabaseUrl($params));
+    }
+
+    private static function buildDriverConnection(array $params)
+    {
         // check for existing pdo object
         if (isset($params['pdo']) && ! $params['pdo'] instanceof \PDO) {
             throw DBALException::invalidPdoInstance();
@@ -158,18 +226,7 @@ final class DriverManager
             $className = self::$_driverMap[$params['driver']];
         }
 
-        $driver = new $className();
-
-        $wrapperClass = 'Doctrine\DBAL\Connection';
-        if (isset($params['wrapperClass'])) {
-            if (is_subclass_of($params['wrapperClass'], $wrapperClass)) {
-               $wrapperClass = $params['wrapperClass'];
-            } else {
-                throw DBALException::invalidWrapperClass($params['wrapperClass']);
-            }
-        }
-
-        return new $wrapperClass($params, $driver, $config, $eventManager);
+        return new $className();
     }
 
     /**
