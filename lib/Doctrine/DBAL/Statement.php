@@ -162,7 +162,7 @@ class Statement implements \IteratorAggregate, DriverStatement
         }
 
         try {
-            $stmt = $this->stmt->execute($params);
+            $stmt = $this->stmt->execute($this->params);
         } catch (\Exception $ex) {
             if ($logger) {
                 $logger->stopQuery();
